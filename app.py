@@ -4,6 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStream
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from threading import Thread
+import pandas as pd
 import torch
 from langchain.document_loaders import (
     PDFMinerLoader, TextLoader, UnstructuredWordDocumentLoader
@@ -28,7 +29,8 @@ else:
 nltk.download("punkt", quiet=True)
 
 # Путь к файлу изначальных знаний
-INITIAL_DOC_PATH = "/home/ubuntu/RAG_model/Initial_knowledge.txt"
+# INITIAL_DOC_PATH = "/home/ubuntu/RAG_model/Initial_knowledge.txt"
+INITIAL_EXCEL_PATH = "/home/ubuntu/RAG_model/initial_knowledge.xlsx"
 
 # Глобальная переменная для базы знаний
 SYSTEM_PROMPT = (
@@ -87,11 +89,13 @@ def needs_internet_search(query):
 # Загрузка модели и токенизатора
 def load_model():
     MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    # MODEL_NAME = "ai-sage/GigaChat-20B-A3B-instruct"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME,trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         torch_dtype=torch.bfloat16,
-        device_map="auto"
+        device_map="auto",
+        trust_remote_code=True
     )
     print("Model and tokenizer loaded!")
     return model, tokenizer
@@ -162,10 +166,18 @@ def build_index(file_paths, chunk_size):
 def initialize_vectorstore():
     global vectorstore
     try:
-        if os.path.exists(INITIAL_DOC_PATH):
-            doc = load_single_document(INITIAL_DOC_PATH)
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
-            documents = text_splitter.split_documents([doc])
+        if os.path.exists(INITIAL_EXCEL_PATH):
+            # Читаем Excel-файл с помощью pandas
+            df = pd.read_excel(INITIAL_EXCEL_PATH)
+            documents = []
+            # Создаем отдельный документ для каждой пары вопрос-ответ
+            for idx, row in df.iterrows():
+                question = str(row["Вопросы"])
+                answer = str(row["Ответы"])
+                page_content = f"Вопрос: {question}\nОтвет: {answer}"
+                metadata = {"file_name": "initial_knowledge.xlsx"}
+                doc = Document(page_content=page_content, metadata=metadata)
+                documents.append(doc)
             vectorstore = Chroma.from_documents(
                 documents,
                 embedding=embeddings,
@@ -173,7 +185,7 @@ def initialize_vectorstore():
             )
             print("База знаний успешно инициализирована из файла.")
         else:
-            print(f"Файл {INITIAL_DOC_PATH} не найден. База знаний не загружена.")
+            print(f"Файл {INITIAL_EXCEL_PATH} не найден. База знаний не загружена.")
     except Exception as e:
         print(f"Ошибка инициализации базы: {str(e)}")
 
