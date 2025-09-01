@@ -30,7 +30,7 @@ nltk.download("punkt", quiet=True)
 
 # Путь к файлу изначальных знаний
 # INITIAL_DOC_PATH = "/home/ubuntu/RAG_model/Initial_knowledge.txt"
-INITIAL_EXCEL_PATH = "/home/ubuntu/RAG_model/initial_knowledge.xlsx"
+INITIAL_EXCEL_PATH = "/home/ubuntu/RAG_model/initial_knowledge_new.xlsx"
 
 # Глобальная переменная для базы знаний
 SYSTEM_PROMPT = (
@@ -54,8 +54,8 @@ SYSTEM_PROMPT = (
 LOADER_MAPPING = {
     ".pdf": (PDFMinerLoader, {}),
     ".txt": (TextLoader, {"encoding": "utf8"}),
-    ".doc": (UnstructuredWordDocumentLoader, {}),
-    ".docx": (UnstructuredWordDocumentLoader, {}),
+    ".doc": (UnstructuredWordDocumentLoader, {"mode": "single"}),
+    ".docx": (UnstructuredWordDocumentLoader, {"mode": "single"}),
 }
 
 # Инициализация DuckDuckGo как инструмента поиска
@@ -175,7 +175,7 @@ def initialize_vectorstore():
                 question = str(row["Вопросы"])
                 answer = str(row["Ответы"])
                 page_content = f"Вопрос: {question}\nОтвет: {answer}"
-                metadata = {"file_name": "initial_knowledge.xlsx"}
+                metadata = {"file_name": "обновленнная_база_знаний.xlsx"}
                 doc = Document(page_content=page_content, metadata=metadata)
                 documents.append(doc)
             vectorstore = Chroma.from_documents(
@@ -390,7 +390,7 @@ with gr.Blocks(title='Электроник', theme='davehornik/Tealy') as demo:
 
                 temp = gr.Slider(
                     minimum=0.1,
-                    maximum=2.0,
+                    maximum=1.5,
                     value=0.7,
                     step=0.1,
                     interactive=True,
